@@ -3,6 +3,10 @@ name = "rrm"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "rrm"
+path = "src/main.rs"
+
 [dependencies]
 redis = "0.23.0"
 tui = "0.19.0"
