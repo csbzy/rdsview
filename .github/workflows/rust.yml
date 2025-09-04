@@ -15,8 +15,79 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+    - name: Build and upload Rust binary to GitHub Releases
+  # You may pin to the exact commit or the version.
+  # uses: taiki-e/upload-rust-binary-action@3962470d6e7f1993108411bc3f75a135ec67fc8c
+  uses: taiki-e/upload-rust-binary-action@v1.27.0
+  with:
+    # Comma-separated list of binary names (non-extension portion of filename) to build and upload. Note that glob pattern is not supported yet.
+
+    bin: 
+    # Archive name (non-extension portion of filename) to be uploaded (variables `$bin`, `$target`, `$tag`, and any string)
+    archive: # optional, default is $bin-$target
+    # Target name, default is host triple
+    target: # optional
+    # Comma-separated list of cargo build features to enable
+    features: # optional
+    # Package name to build
+    package: # optional
+    # Whether to build with `--locked` flag
+    locked: # optional, default is false
+    # Whether to disable cargo build default features
+    no-default-features: # optional
+    # Alias for 'no-default-features'
+    no_default_features: # optional, default is false
+    # Override cargo manifest path
+    manifest-path: # optional
+    # Alias for 'manifest-path'
+    manifest_path: # optional
+    # On which platform to distribute the `.tar.gz` file (all, unix, windows, or none)
+    tar: # optional, default is unix
+    # On which platform to distribute the `.tar.xz` file (all, unix, windows, or none)
+    tar-xz: # optional, default is none
+    # On which platform to distribute the `.zip` file (all, unix, windows, or none)
+    zip: # optional, default is windows
+    # Comma-separated list of additional files to be included to archive. Note that glob pattern is not supported yet.
+
+    include: # optional
+    # Comma-separated list of additional files to be uploaded separately. Note that glob pattern is not supported yet.
+
+    asset: # optional
+    # Whether to create the leading directory in the archive or not
+    leading-dir: # optional
+    # Alias for 'leading-dir'
+    leading_dir: # optional, default is false
+    # Create extra leading directory(s) for binary file(s) specified by 'bin' option
+    bin-leading-dir: # optional
+    # Tool to build binaries (cargo, cross, or cargo-zigbuild)
+    build-tool: # optional
+    # Alias for 'build-tool'
+    build_tool: # optional
+    # Comma-separated list of algorithms to be used for checksum (b2, sha256, sha512, sha1, or md5)
+    checksum: # optional
+    # GitHub token for creating GitHub Releases.If not set this option, the GITHUB_TOKEN environment variable will be used.
+    token: # optional
+    # Fully-formed tag ref for this release.If not set this option, the GITHUB_REF environment variable (automatically set by GitHub Actions) will be used.
+
+    ref: # optional
+    # The cargo profile to build. This defaults to the release profile.
+    profile: # optional, default is release
+    # Build and compress binaries, but do not upload them.Note that some errors are downgraded to warnings in this mode.
+
+    dry-run: # optional
+    # Suppress informational warnings for `dru-run` keeping the rest
+
+    dry-run-intended: # optional, default is false
+    # Alias for 'dry-run'
+    dry_run: # optional, default is false
+    # Sign build products using `codesign` on macOS
+    codesign: # optional
+    # Prefix for the `codesign` identifier on macOS
+    codesign-prefix: # optional
+    # Alias for 'codesign-prefix'
+    codesign_prefix: # optional
+    # Specifies a set of option flags to be embedded in the code signature on macOS. See the codesign manpage for details.
+    codesign-options: # optional
+    # Alias for 'codesign-options'
+    codesign_options: # optional
+          
