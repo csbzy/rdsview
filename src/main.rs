@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         url
     } else {
         format!(
-            "redis://{}:{}@{}:{}?db={}",
+            "redis://{}:{}@{}:{}/{}",
             args.password.as_deref().unwrap_or(""),
             args.password.as_deref().unwrap_or(""),
             args.host,

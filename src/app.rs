@@ -24,11 +24,16 @@ pub struct App {
     key_details: HashMap<String, KeyDetails>,
     status: String,
     search_query: String,
-    show_details: bool,
     key_list_state: ListState,
     key_details_vertical_scroll_state: TableState,
+    select_view: SelectView,
 }
 
+#[derive(PartialEq, Eq)]
+enum SelectView {
+    SelectKeyList,
+    SelectKeyDetails,
+}
 // 键详情结构
 struct KeyDetails {
     key_type: String,
@@ -54,9 +59,9 @@ impl App {
             key_details: HashMap::new(),
             status: String::from("Not connected to Redis server"),
             search_query: String::new(),
-            show_details: false,
             key_list_state: ListState::default(),
             key_details_vertical_scroll_state: TableState::default(),
+            select_view: SelectView::SelectKeyList,
         }
     }
 
@@ -82,7 +87,10 @@ impl App {
             self.keys = keys;
             self.status = format!("Find {} keys", self.keys.len());
             self.key_details.clear();
-            self.key_list_state.select(None);
+            self.key_list_state.select(Some(0));
+
+            self.load_key_details(self.keys.clone()[0].as_str())
+                .unwrap()
         }
         Ok(())
     }
@@ -150,7 +158,7 @@ impl App {
     fn handle_key_events(&mut self, key: KeyCode) -> Result<bool> {
         self.status = format!("Press Key: {:?}", key);
         match key {
-            KeyCode::Char('Q') => return Ok(true),
+            KeyCode::Char('Q') | KeyCode::Esc => return Ok(true),
             KeyCode::Char('C') => {
                 if let Event::Key(key) = event::read()? {
                     if key.modifiers.contains(event::KeyModifiers::CONTROL) {
@@ -162,65 +170,80 @@ impl App {
                 self.load_keys()?;
                 self.status = "Keys list refreshed".to_string();
             }
-            KeyCode::Enter => {
-                if let Some(key) = self
-                    .get_keys()
-                    .get(self.key_list_state.selected().unwrap_or(0))
-                {
-                    self.load_key_details(&key.clone())?;
-                    self.show_details = true;
-                    self.key_details_vertical_scroll_state.select(None);
-                }
+            KeyCode::Enter => {}
+            KeyCode::Tab => {
+                self.select_view = match self.select_view {
+                    SelectView::SelectKeyList => SelectView::SelectKeyDetails,
+                    SelectView::SelectKeyDetails => SelectView::SelectKeyList,
+                };
             }
-            KeyCode::Esc => {
-                self.show_details = false;
-            }
-            KeyCode::Up => {
-                if self.show_details {
+            KeyCode::Up => match self.select_view {
+                SelectView::SelectKeyDetails => {
                     self.key_details_vertical_scroll_state.select_previous();
                     return Ok(false);
                 }
-                if !self.keys.is_empty() {
-                    if self.key_list_state.selected().is_some_and(|x| x == 0) {
-                        self.key_list_state.select_last();
-                    } else {
-                        self.key_list_state.select_previous();
+                SelectView::SelectKeyList => {
+                    if !self.keys.is_empty() {
+                        if self.key_list_state.selected().is_some_and(|x| x == 0) {
+                            self.key_list_state.select_last();
+                        } else {
+                            self.key_list_state.select_previous();
+                        }
+                        if let Some(key) = self
+                            .get_keys()
+                            .get(self.key_list_state.selected().unwrap_or(0))
+                        {
+                            self.load_key_details(&key.clone())?;
+                            self.key_details_vertical_scroll_state.select(None);
+                        }
                     }
                 }
-            }
-            KeyCode::Down => {
-                if self.show_details {
+            },
+            KeyCode::Down => match self.select_view {
+                SelectView::SelectKeyDetails => {
                     self.key_details_vertical_scroll_state.select_next();
                     return Ok(false);
                 }
-                if !self.keys.is_empty() {
+                SelectView::SelectKeyList => {
+                    let keys = self.get_keys();
                     if self
                         .key_list_state
                         .selected()
-                        .is_some_and(|x| x == self.keys.len() - 1)
+                        .is_some_and(|x| x == keys.len() - 1)
                     {
                         self.key_list_state.select_first();
                     } else {
                         self.key_list_state.select_next();
                     }
+
+                    if let Some(key) = self
+                        .get_keys()
+                        .get(self.key_list_state.selected().unwrap_or(0))
+                    {
+                        self.load_key_details(&key.clone())?;
+                        self.key_details_vertical_scroll_state.select(None);
+                    }
                 }
-            }
-            KeyCode::Char(c) => {
-                if !self.show_details {
+            },
+            KeyCode::Char(c) => match self.select_view {
+                SelectView::SelectKeyList => {
                     self.search_query.push(c);
                     self.filtered_keys();
                     self.key_list_state.select(None);
                 }
-            }
-            KeyCode::Backspace => {
-                if !self.show_details {
+                _ => {}
+            },
+
+            KeyCode::Backspace => match self.select_view {
+                SelectView::SelectKeyList => {
                     self.search_query.pop();
                     if !self.search_query.is_empty() {
                         self.filtered_keys();
                     }
                     self.key_list_state.select(None);
                 }
-            }
+                _ => {}
+            },
             _ => {}
         }
         Ok(false)
@@ -260,26 +283,27 @@ impl App {
             .style(Style::default().bg(Color::Blue).fg(Color::White))
             .block(Block::default().borders(Borders::NONE));
         frame.render_widget(status_bar, chunks[1]);
+        let main_chunks = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints([Constraint::Min(1), Constraint::Min(1)])
+            .split(chunks[0]);
+        self.render_key_list(frame, main_chunks[0]);
 
-        if self.show_details {
-            // 显示键详情
-            self.render_key_details(frame, chunks[0]);
-        } else {
-            // 显示键列表
-            self.render_key_list(frame, chunks[0]);
-        }
+        self.render_key_details(frame, main_chunks[1]);
 
         // 底部帮助栏
         let help_text = Line::from(vec![
             Span::raw("KeyMap: "),
-            Span::styled("Q ", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw("Quit "),
-            Span::styled("R ", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw("Refresh "),
-            Span::styled("Enter ", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw("View Details "),
-            Span::styled("ESC ", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw("Back "),
+            Span::styled("Q", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw("(Quit) "),
+            Span::styled("Tab", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw("(Switch Select View) "),
+            Span::styled("R", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw("(Refresh) "),
+            Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw("(View Details) "),
+            Span::styled("ESC", Style::default().add_modifier(Modifier::BOLD)),
+            Span::raw("(Back) "),
         ]);
         let help_bar = Paragraph::new(help_text)
             .style(Style::default().bg(Color::DarkGray).fg(Color::White))
@@ -317,11 +341,19 @@ impl App {
                 format!("Redis Keys ({}/{})", items.len().clone(), self.keys.len()),
                 Style::default().add_modifier(Modifier::BOLD),
             )))
+            .style(self.get_selected_style(SelectView::SelectKeyList))
             .highlight_style(Style::new().blue().italic())
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always)
             .scroll_padding(0);
         frame.render_stateful_widget(key_list, chunks[1], &mut self.key_list_state);
+    }
+
+    fn get_selected_style(&self, cur_render_type: SelectView) -> Style {
+        if self.select_view == cur_render_type {
+            return Style::default().fg(Color::Green);
+        }
+        return Style::default();
     }
 
     // 渲染键详情
@@ -330,16 +362,15 @@ impl App {
             .get_keys()
             .get(self.key_list_state.selected().unwrap_or(0))
         {
+            let chunks = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([
+                    Constraint::Length(4),
+                    Constraint::Min(1),
+                    Constraint::Length(3),
+                ])
+                .split(area);
             if let Some(details) = self.key_details.get(key) {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([
-                        Constraint::Length(4),
-                        Constraint::Min(1),
-                        Constraint::Length(3),
-                    ])
-                    .split(area);
-
                 // 键基本信息
                 let details_text = vec![
                     Line::from(vec![
@@ -390,6 +421,7 @@ impl App {
                             let table = Table::new(rows, widths)
                                 .header(header)
                                 .block(Block::default().borders(Borders::ALL).title("Hash Field"))
+                                .style(self.get_selected_style(SelectView::SelectKeyDetails))
                                 .widths(&[Constraint::Percentage(30), Constraint::Percentage(70)])
                                 .row_highlight_style(Style::new().blue().italic())
                                 .cell_highlight_style(Style::new().red().italic())
@@ -407,25 +439,23 @@ impl App {
                     _ => {
                         let value_block = Paragraph::new(details.value.clone())
                             .block(Block::default().borders(Borders::ALL).title("Value"))
+                            .style(self.get_selected_style(SelectView::SelectKeyDetails))
                             .wrap(Wrap { trim: true });
                         frame.render_widget(value_block, chunks[1]);
                     }
                 }
 
-                let details_block = Paragraph::new(vec![Line::from(vec![
-                    Span::styled("TTL: ", Style::default().add_modifier(Modifier::BOLD)),
-                    Span::raw(if details.ttl == -1 {
+                let details_block =
+                    Paragraph::new(vec![Line::from(vec![Span::raw(if details.ttl == -1 {
                         "Never expires".to_string()
                     } else if details.ttl == -2 {
                         "Key does not exist".to_string()
                     } else {
                         format!("{} seconds", details.ttl)
-                    }),
-                ])])
-                .block(Block::default().borders(Borders::ALL).title(Span::styled(
-                    "Key Details",
-                    Style::default().add_modifier(Modifier::BOLD),
-                )));
+                    })])])
+                    .block(Block::default().borders(Borders::ALL).title(
+                        Span::styled("TTL", Style::default().add_modifier(Modifier::BOLD)),
+                    ));
                 frame.render_widget(details_block, chunks[2]);
             }
         }
