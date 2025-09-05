@@ -3,7 +3,7 @@ use crossterm::event::{self, Event, KeyCode};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::CrosstermBackend,
-    style::{palette::tailwind::SLATE, Color, Modifier, Style},
+    style::{palette::tailwind::SLATE, Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{
         Block, Borders, Cell, HighlightSpacing, List, ListItem, ListState, Paragraph, Row,
@@ -143,6 +143,7 @@ impl App {
 
     // 处理按键事件
     fn handle_key_events(&mut self, key: KeyCode) -> Result<bool> {
+        self.status = format!("Press Key: {:?}", key);
         match key {
             KeyCode::Char('Q') => return Ok(true),
             KeyCode::Char('C') => {
@@ -160,7 +161,7 @@ impl App {
                 if let Some(key) = self.keys.get(self.key_list_state.selected().unwrap_or(0)) {
                     self.load_key_details(&key.clone())?;
                     self.show_details = true;
-                    self.key_details_vertical_scroll_state = TableState::default();
+                    self.key_details_vertical_scroll_state.select(None);
                 }
             }
             KeyCode::Esc => {
@@ -168,7 +169,7 @@ impl App {
             }
             KeyCode::Up => {
                 if self.show_details {
-                    self.key_details_vertical_scroll_state.select_next();
+                    self.key_details_vertical_scroll_state.select_previous();
                     return Ok(false);
                 }
                 if !self.keys.is_empty() {
@@ -181,7 +182,7 @@ impl App {
             }
             KeyCode::Down => {
                 if self.show_details {
-                    self.key_details_vertical_scroll_state.select_previous();
+                    self.key_details_vertical_scroll_state.select_next();
                     return Ok(false);
                 }
                 if !self.keys.is_empty() {
@@ -358,17 +359,18 @@ impl App {
                 match details.key_type.as_str() {
                     "hash" => {
                         if let Some(fields) = &details.hash_fields {
-                            let mut rows = vec![Row::new(vec![
+                            let header = Row::new(vec![
                                 Cell::from(Span::styled(
                                     "Field",
                                     Style::default().add_modifier(Modifier::BOLD),
                                 )),
                                 Cell::from(Span::styled(
-                                    "Hash Fields",
+                                    "Value",
                                     Style::default().add_modifier(Modifier::BOLD),
                                 )),
-                            ])];
+                            ]);
 
+                            let mut rows = vec![];
                             for (field, value) in fields {
                                 rows.push(Row::new(vec![
                                     Cell::from(Span::raw(field)),
@@ -378,13 +380,17 @@ impl App {
 
                             let widths = [Constraint::Length(5), Constraint::Length(5)];
                             // 更新滚动状态
-                            self.key_details_vertical_scroll_state.select_first();
+                            // self.key_details_vertical_scroll_state.select_first();
 
                             let table = Table::new(rows, widths)
+                                .header(header)
                                 .block(Block::default().borders(Borders::ALL).title("Hash Field"))
                                 .widths(&[Constraint::Percentage(30), Constraint::Percentage(70)])
-                                .cell_highlight_style(SELECTED_STYLE)
-                                .column_highlight_style(SELECTED_STYLE);
+                                .row_highlight_style(Style::new().blue().italic())
+                                .cell_highlight_style(Style::new().red().italic())
+                                .column_highlight_style(Style::new().blue().italic())
+                                .highlight_symbol("->")
+                                .highlight_spacing(HighlightSpacing::Always);
 
                             frame.render_stateful_widget(
                                 table,
