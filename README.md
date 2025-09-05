@@ -17,8 +17,8 @@ A lightweight Redis client with a Terminal User Interface (TUI) built with Rust.
 ### From source
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/rrm.git
-cd rrm
+git clone https://github.com/csbzy/rdsview
+cd rdsview
 
 # Build the project
 cargo build --release
@@ -31,12 +31,12 @@ cargo install --path .
 
 ### Basic Usage
 ```bash
-rrm --host <redis-host> --port <redis-port> --password <redis-password> --db <database-number>
+rdsview --host <redis-host> --port <redis-port> --password <redis-password> --db <database-number>
 ```
 
 ### Connection via URL
 ```bash
-rrm --url redis://:<password>@<host>:<port>/<db>
+rdsview --url redis://:<password>@<host>:<port>/<db>
 ```
 
 ### Command-line Options
@@ -49,14 +49,14 @@ rrm --url redis://:<password>@<host>:<port>/<db>
 | `--url` | Redis connection URL (overrides other connection params) | None |
 
 ## Keyboard Shortcuts
-- `Arrow keys`/`j`/`k`: Navigate through keys
+- `Arrow keys`: Navigate through keys
 - `Enter`: Select a key to view details
-- `/`: Enter search mode
+- `any char`: Enter search mode
 - `Esc`: Exit search mode or clear search
 - `q`/`Ctrl+C`: Quit the application
 
 ## Dependencies
-- [tui-rs](https://github.com/fdehau/tui-rs) - Terminal UI library
+- [ratatui](https://github.com/ratatui/ratatui)) - Terminal UI library
 - [crossterm](https://github.com/crossterm-rs/crossterm) - Terminal handling
 - [redis](https://github.com/mitsuhiko/redis-rs) - Redis client
 - [clap](https://github.com/clap-rs/clap) - Command-line argument parsing
