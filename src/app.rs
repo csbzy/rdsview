@@ -3,11 +3,10 @@ use crossterm::event::{self, Event, KeyCode};
 use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::CrosstermBackend,
-    style::{palette::tailwind::SLATE, Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{
-        Block, Borders, Cell, HighlightSpacing, List, ListItem, ListState, Paragraph, Row,
-        ScrollDirection, Scrollbar, ScrollbarOrientation, ScrollbarState, StatefulWidget, Table,
+        Block, Borders, Cell, HighlightSpacing, List, ListItem, ListState, Paragraph, Row, Table,
         TableState, Wrap,
     },
     Frame, Terminal,
@@ -15,8 +14,6 @@ use ratatui::{
 use redis::{Client, Commands};
 use std::collections::HashMap;
 use std::io; // Ensure these imports exist
-
-const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
 // 应用状态
 pub struct App {
@@ -141,6 +138,14 @@ impl App {
         Ok(())
     }
 
+    fn get_keys(&self) -> &Vec<String> {
+        if self.search_query.is_empty() {
+            &self.keys
+        } else {
+            &self.search_match_keys
+        }
+    }
+
     // 处理按键事件
     fn handle_key_events(&mut self, key: KeyCode) -> Result<bool> {
         self.status = format!("Press Key: {:?}", key);
@@ -158,7 +163,10 @@ impl App {
                 self.status = "Keys list refreshed".to_string();
             }
             KeyCode::Enter => {
-                if let Some(key) = self.keys.get(self.key_list_state.selected().unwrap_or(0)) {
+                if let Some(key) = self
+                    .get_keys()
+                    .get(self.key_list_state.selected().unwrap_or(0))
+                {
                     self.load_key_details(&key.clone())?;
                     self.show_details = true;
                     self.key_details_vertical_scroll_state.select(None);
@@ -298,14 +306,8 @@ impl App {
         .block(Block::default().borders(Borders::ALL).title("Search Key"));
         frame.render_widget(search_box, chunks[0]);
 
-        // 渲染过滤后的键列表
-        let keys = if self.search_query.is_empty() {
-            &self.keys
-        } else {
-            &self.search_match_keys
-        };
-
-        let items: Vec<ListItem> = keys
+        let items: Vec<ListItem> = self
+            .get_keys()
             .iter()
             .map(|key| ListItem::new(Line::from((*key).clone())))
             .collect();
@@ -315,7 +317,7 @@ impl App {
                 format!("Redis Keys ({}/{})", items.len().clone(), self.keys.len()),
                 Style::default().add_modifier(Modifier::BOLD),
             )))
-            .highlight_style(SELECTED_STYLE)
+            .highlight_style(Style::new().blue().italic())
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always)
             .scroll_padding(0);
@@ -324,7 +326,10 @@ impl App {
 
     // 渲染键详情
     fn render_key_details(&mut self, frame: &mut Frame, area: Rect) {
-        if let Some(key) = self.keys.get(self.key_list_state.selected().unwrap_or(0)) {
+        if let Some(key) = self
+            .get_keys()
+            .get(self.key_list_state.selected().unwrap_or(0))
+        {
             if let Some(details) = self.key_details.get(key) {
                 let chunks = Layout::default()
                     .direction(Direction::Vertical)
