@@ -173,7 +173,7 @@ impl App {
                 }
                 if !self.keys.is_empty() {
                     if self.key_list_state.selected().is_some_and(|x| x == 0) {
-                        self.key_list_state.select(Some(self.keys.len() - 1));
+                        self.key_list_state.select_last();
                     } else {
                         self.key_list_state.select_previous();
                     }
@@ -190,7 +190,7 @@ impl App {
                         .selected()
                         .is_some_and(|x| x == self.keys.len() - 1)
                     {
-                        self.key_list_state.select(Some(0));
+                        self.key_list_state.select_first();
                     } else {
                         self.key_list_state.select_next();
                     }
@@ -317,7 +317,7 @@ impl App {
             .highlight_style(SELECTED_STYLE)
             .highlight_symbol(">")
             .highlight_spacing(HighlightSpacing::Always)
-            .scroll_padding(1);
+            .scroll_padding(0);
         frame.render_stateful_widget(key_list, chunks[1], &mut self.key_list_state);
     }
 
