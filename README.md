@@ -1,7 +1,5 @@
-# rrm - Redis Terminal User Interface Client
-
+# rrm - Redis Terminal User Interface Client  [![Release](https://github.com/csbzy/rdsview/actions/workflows/rust.yml/badge.svg)](https://github.com/csbzy/rdsview/actions/workflows/rust.yml)
 A lightweight Redis client with a Terminal User Interface (TUI) built with Rust.
-
 ## Features
 - Connect to Redis using command-line parameters
 - View all Redis keys with real-time filtering/search
